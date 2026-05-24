@@ -103,6 +103,29 @@ export const authService = {
     }
   },
 
+  updateProfile: async (profileData) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/patient-auth/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(profileData),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Server error');
+      // Update local storage too to keep it synchronized
+      if (data.data) {
+        localStorage.setItem('patient', JSON.stringify(data.data));
+      }
+      return data.data || profileData;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('patient');

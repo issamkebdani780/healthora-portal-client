@@ -23,7 +23,10 @@ import {
   Scale,
   Search as SearchIcon,
   Star,
-  Users
+  Users,
+  Pencil,
+  Save,
+  X as XIcon
 } from 'lucide-react';
 import { appointmentService } from '../services/appointmentService';
 import { authService } from '../services/authService';
@@ -63,6 +66,14 @@ const PatientDashboard = () => {
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState('');
   const [searchError, setSearchError] = useState('');
+
+  // Edit profile states
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [communes, setCommunes] = useState([]);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [editSuccess, setEditSuccess] = useState('');
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -173,6 +184,57 @@ const PatientDashboard = () => {
   const handleLogout = () => {
     authService.logout();
     navigate('/');
+  };
+
+  const handleEditProfile = () => {
+    setEditForm({
+      firstname: patientInfo.firstname || '',
+      lastname: patientInfo.lastname || '',
+      birthdate: patientInfo.birthdate ? patientInfo.birthdate.split('T')[0] : '',
+      gender: patientInfo.gender || 'male',
+      wilaya_id: patientInfo.wilaya_id || '',
+      commun_id: patientInfo.commun_id || '',
+      address: patientInfo.address || '',
+    });
+    setCommunes([]);
+    setEditError('');
+    setEditSuccess('');
+    setIsEditingProfile(true);
+    // Pre-load communes if wilaya is set
+    if (patientInfo.wilaya_id) {
+      locationService.getCommunes(patientInfo.wilaya_id).then(setCommunes).catch(() => {});
+    }
+  };
+
+  const handleEditWilayaChange = async (e) => {
+    const val = e.target.value;
+    setEditForm(f => ({ ...f, wilaya_id: val, commun_id: '' }));
+    setCommunes([]);
+    if (val) {
+      try {
+        const c = await locationService.getCommunes(val);
+        setCommunes(c || []);
+      } catch {}
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setEditSaving(true);
+    setEditError('');
+    setEditSuccess('');
+    try {
+      const updated = await authService.updateProfile(editForm);
+      setPatientInfo(updated);
+      setEditSuccess('Profil mis à jour avec succès !');
+      setTimeout(() => {
+        setIsEditingProfile(false);
+        setEditSuccess('');
+      }, 1500);
+    } catch (err) {
+      setEditError(err.message || 'Erreur lors de la mise à jour.');
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -349,26 +411,31 @@ const PatientDashboard = () => {
       <div className="flex-grow flex flex-col min-w-0 lg:ml-64 xl:ml-72 pb-20 lg:pb-0">
         
         {/* ─── DYNAMIC TOP BAR HEADER (Matching frontEnd style) ─── */}
-        <header className="sticky top-0 z-30 h-16 xl:h-20 bg-white/80 backdrop-blur-xl border-b border-slate-100/80 shadow-sm flex items-center justify-between px-6 lg:px-10">
+        <header className="sticky top-0 z-30 h-16 xl:h-20 bg-white/80 backdrop-blur-xl border-b border-slate-100/80 shadow-sm flex items-center justify-between px-4 sm:px-6 lg:px-10">
           
-          {/* Header Title (aligning with page) */}
-          <div>
-            <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 leading-none">
-              {activeTab === 'appointments' && 'Gestion des Rendez-vous'}
-              {activeTab === 'search' && 'Trouver un Praticien'}
-              {activeTab === 'prescriptions' && 'Mes Ordonnances Médicales'}
-              {activeTab === 'profile' && 'Mon Profil Personnel'}
-            </h2>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1.5 hidden sm:block">
-              {activeTab === 'appointments' && 'Planification et historique de vos consultations'}
-              {activeTab === 'search' && 'Rechercher des médecins par wilaya et spécialité'}
-              {activeTab === 'prescriptions' && 'Vos documents officiels et prescriptions'}
-              {activeTab === 'profile' && 'Consulter et gérer vos informations personnelles'}
-            </p>
+          {/* Header Left: Logo + Title */}
+          <div className="flex items-center gap-3">
+            {/* Stethoscope Logo (visible on mobile, hidden on desktop where sidebar has it) */}
+            <div className="lg:hidden w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
+              <Stethoscope className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 leading-none">
+                {activeTab === 'appointments' && 'Rendez-vous'}
+                {activeTab === 'search' && 'Nouveau RDV'}
+                {activeTab === 'prescriptions' && 'Ordonnances'}
+                {activeTab === 'profile' && 'Mon Profil'}
+              </h2>
+              <p className="text-[10px] text-slate-400 font-bold mt-1">
+                {new Date().toLocaleDateString("fr-FR", {
+                  weekday: "short", day: "numeric", month: "short",
+                })}
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Desktop Date badge aligned with doctor dashboard */}
+          <div className="flex items-center gap-3">
+            {/* Desktop Date badge */}
             <div className="hidden md:flex items-center gap-2 px-3.5 py-2 bg-primary-50/60 border border-primary-100/80 rounded-2xl">
               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
               <span className="text-xs font-bold text-primary-700">
@@ -378,15 +445,16 @@ const PatientDashboard = () => {
               </span>
             </div>
 
-            {/* Quick Consultation CTA */}
-            {activeTab !== 'search' && (
-              <button 
-                onClick={() => setActiveTab('search')}
-                className="bg-gradient-to-r from-primary-500 to-secondary-600 hover:from-primary-600 hover:to-secondary-700 text-white font-bold py-2.5 px-4.5 rounded-xl shadow-md shadow-primary-500/20 hover:scale-[1.02] active:scale-95 transition-all duration-200 flex items-center gap-2 text-xs cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                Nouveau RDV
-              </button>
+          
+
+            {/* Patient Avatar (mobile) */}
+            {patientInfo && (
+              <div className="lg:hidden relative">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-secondary-500 flex items-center justify-center text-white font-extrabold text-xs shadow-md">
+                  {patientInfo.firstname?.[0]}{patientInfo.lastname?.[0]}
+                </div>
+                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" />
+              </div>
             )}
           </div>
         </header>
@@ -922,14 +990,15 @@ const PatientDashboard = () => {
                 <div className="max-w-3xl space-y-6 animate-fade-in-up">
                   
                   {patientInfo ? (
-                    <div className="bg-white border border-slate-100/80 rounded-3xl p-6.5 shadow-sm relative overflow-hidden">
+                    <div className="bg-white border border-slate-100/80 rounded-3xl p-6 shadow-sm relative overflow-hidden">
                       {/* Ambient background decoration */}
                       <div className="absolute top-0 right-0 w-80 h-80 bg-primary-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
+                      {/* ── Profile Header ── */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100 mb-6 relative z-10">
                         <div className="flex items-center gap-4">
                           <div className="w-16 h-16 bg-gradient-to-tr from-primary-500 to-secondary-600 rounded-2xl flex items-center justify-center text-white text-2xl font-extrabold shadow-md shrink-0 border border-white/20">
-                            {patientInfo.firstname[0]}{patientInfo.lastname[0]}
+                            {patientInfo.firstname?.[0]}{patientInfo.lastname?.[0]}
                           </div>
                           <div>
                             <h2 className="text-xl font-extrabold text-slate-900">{patientInfo.firstname} {patientInfo.lastname}</h2>
@@ -942,54 +1011,203 @@ const PatientDashboard = () => {
                             </div>
                           </div>
                         </div>
+
+                        {/* Edit toggle button */}
+                        {!isEditingProfile && (
+                          <button
+                            onClick={handleEditProfile}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-50 hover:bg-primary-100 text-primary-600 font-bold text-xs border border-primary-100 transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-95 shrink-0"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            Modifier le profil
+                          </button>
+                        )}
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
-                        <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-100/55 flex gap-3.5 items-start hover:bg-slate-50 transition-colors duration-150">
-                          <div className="w-9.5 h-9.5 bg-white border border-slate-100 text-slate-500 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
-                            <Phone className="w-4.5 h-4.5 text-slate-500" />
+                      {/* ── READ-ONLY VIEW ── */}
+                      {!isEditingProfile && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
+                          <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-100/55 flex gap-3.5 items-start hover:bg-slate-50 transition-colors duration-150">
+                            <div className="w-9 h-9 bg-white border border-slate-100 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                              <Phone className="w-4 h-4 text-slate-500" />
+                            </div>
+                            <div>
+                              <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Numéro de Téléphone</p>
+                              <p className="font-extrabold text-slate-800 text-sm mt-1">{patientInfo.phone}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Numéro de Téléphone</p>
-                            <p className="font-extrabold text-slate-800 text-sm mt-1">{patientInfo.phone}</p>
-                          </div>
-                        </div>
 
-                        <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-100/55 flex gap-3.5 items-start hover:bg-slate-50 transition-colors duration-150">
-                          <div className="w-9.5 h-9.5 bg-white border border-slate-100 text-slate-500 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
-                            <Calendar className="w-4.5 h-4.5 text-slate-500" />
+                          <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-100/55 flex gap-3.5 items-start hover:bg-slate-50 transition-colors duration-150">
+                            <div className="w-9 h-9 bg-white border border-slate-100 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                              <Calendar className="w-4 h-4 text-slate-500" />
+                            </div>
+                            <div>
+                              <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Date de Naissance</p>
+                              <p className="font-extrabold text-slate-800 text-sm mt-1">
+                                {patientInfo.birthdate ? new Date(patientInfo.birthdate).toLocaleDateString("fr-FR", { year: 'numeric', month: 'long', day: 'numeric' }) : 'Non fournie'}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Date de Naissance</p>
-                            <p className="font-extrabold text-slate-800 text-sm mt-1">
-                              {patientInfo.birthdate ? new Date(patientInfo.birthdate).toLocaleDateString("fr-FR", { year: 'numeric', month: 'long', day: 'numeric' }) : 'Non fournie'}
-                            </p>
-                          </div>
-                        </div>
 
-                        <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-100/55 flex gap-3.5 items-start hover:bg-slate-50 transition-colors duration-150">
-                          <div className="w-9.5 h-9.5 bg-white border border-slate-100 text-slate-500 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
-                            <User className="w-4.5 h-4.5 text-slate-500" />
+                          <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-100/55 flex gap-3.5 items-start hover:bg-slate-50 transition-colors duration-150">
+                            <div className="w-9 h-9 bg-white border border-slate-100 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                              <User className="w-4 h-4 text-slate-500" />
+                            </div>
+                            <div>
+                              <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Genre Biologique</p>
+                              <p className="font-extrabold text-slate-800 text-sm mt-1 capitalize">{patientInfo.gender || 'Non spécifié'}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Genre Biologique</p>
-                            <p className="font-extrabold text-slate-800 text-sm mt-1 capitalize">{patientInfo.gender || 'Non spécifié'}</p>
-                          </div>
-                        </div>
 
-                        <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-100/55 flex gap-3.5 items-start hover:bg-slate-50 transition-colors duration-150">
-                          <div className="w-9.5 h-9.5 bg-white border border-slate-100 text-slate-500 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
-                            <MapPin className="w-4.5 h-4.5 text-slate-500" />
-                          </div>
-                          <div>
-                            <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Lieu de Résidence</p>
-                            <p className="font-extrabold text-slate-800 text-sm mt-1">
-                              {patientInfo.commune_name || patientInfo.address || 'Non spécifié'}
-                              {(patientInfo.commune_name && patientInfo.wilaya_name) && `, ${patientInfo.wilaya_name}`}
-                            </p>
+                          <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-100/55 flex gap-3.5 items-start hover:bg-slate-50 transition-colors duration-150">
+                            <div className="w-9 h-9 bg-white border border-slate-100 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                              <MapPin className="w-4 h-4 text-slate-500" />
+                            </div>
+                            <div>
+                              <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Lieu de Résidence</p>
+                              <p className="font-extrabold text-slate-800 text-sm mt-1">
+                                {patientInfo.commune_name || patientInfo.address || 'Non spécifié'}
+                                {(patientInfo.commune_name && patientInfo.wilaya_name) && `, ${patientInfo.wilaya_name}`}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      )}
+
+                      {/* ── EDIT FORM ── */}
+                      {isEditingProfile && (
+                        <div className="relative z-10 space-y-5">
+
+                          {/* Feedback banners */}
+                          {editError && (
+                            <div className="flex items-center gap-2.5 p-3.5 bg-rose-50 border border-rose-100 rounded-xl text-rose-700 text-xs font-bold">
+                              <XCircle className="w-4 h-4 shrink-0" />
+                              {editError}
+                            </div>
+                          )}
+                          {editSuccess && (
+                            <div className="flex items-center gap-2.5 p-3.5 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-xs font-bold">
+                              <CheckCircle2 className="w-4 h-4 shrink-0" />
+                              {editSuccess}
+                            </div>
+                          )}
+
+                          {/* Name row */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">Prénom</label>
+                              <input
+                                type="text"
+                                value={editForm.firstname}
+                                onChange={e => setEditForm(f => ({ ...f, firstname: e.target.value }))}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-500/10 transition-all"
+                                placeholder="Prénom"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">Nom</label>
+                              <input
+                                type="text"
+                                value={editForm.lastname}
+                                onChange={e => setEditForm(f => ({ ...f, lastname: e.target.value }))}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-500/10 transition-all"
+                                placeholder="Nom"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Birthdate & Gender row */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">Date de Naissance</label>
+                              <input
+                                type="date"
+                                value={editForm.birthdate}
+                                onChange={e => setEditForm(f => ({ ...f, birthdate: e.target.value }))}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-500/10 transition-all"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">Genre</label>
+                              <select
+                                value={editForm.gender}
+                                onChange={e => setEditForm(f => ({ ...f, gender: e.target.value }))}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-500/10 transition-all cursor-pointer"
+                              >
+                                <option value="male">Masculin</option>
+                                <option value="female">Féminin</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Wilaya & Commune row */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">Wilaya</label>
+                              <select
+                                value={editForm.wilaya_id}
+                                onChange={handleEditWilayaChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-500/10 transition-all cursor-pointer"
+                              >
+                                <option value="">Toutes wilayas</option>
+                                {wilayas.map(w => (
+                                  <option key={w.id} value={w.id}>{w.id} - {w.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">Commune</label>
+                              <select
+                                value={editForm.commun_id}
+                                onChange={e => setEditForm(f => ({ ...f, commun_id: e.target.value }))}
+                                disabled={communes.length === 0}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-500/10 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <option value="">{communes.length === 0 ? 'Sélectionnez une wilaya' : 'Toutes communes'}</option>
+                                {communes.map(c => (
+                                  <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Address */}
+                          <div>
+                            <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">Adresse</label>
+                            <input
+                              type="text"
+                              value={editForm.address}
+                              onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-500/10 transition-all"
+                              placeholder="Ex: 12 Rue des Martyrs, Alger"
+                            />
+                          </div>
+
+                          {/* Action buttons */}
+                          <div className="flex items-center justify-end gap-3 pt-2">
+                            <button
+                              onClick={() => { setIsEditingProfile(false); setEditError(''); setEditSuccess(''); }}
+                              disabled={editSaving}
+                              className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50"
+                            >
+                              <XIcon className="w-3.5 h-3.5" />
+                              Annuler
+                            </button>
+                            <button
+                              onClick={handleSaveProfile}
+                              disabled={editSaving}
+                              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary-500 to-secondary-600 hover:from-primary-600 hover:to-secondary-700 text-white font-bold text-xs shadow-md shadow-primary-500/20 transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                              {editSaving
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <Save className="w-3.5 h-3.5" />
+                              }
+                              {editSaving ? 'Enregistrement...' : 'Enregistrer'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                     </div>
                   ) : (
                     <p className="text-slate-500 font-bold">Impossible de charger le profil.</p>

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Calendar, User, Search, Menu, X } from 'lucide-react';
+import { Calendar, User, Search, Menu, X, Stethoscope } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const Navbar = () => {
@@ -34,8 +34,8 @@ const Navbar = () => {
         <div className="flex justify-between h-20 items-center">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary-600 to-secondary-500 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-primary-500/30">
-              M
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+              <Stethoscope className="w-6 h-6 text-white" />
             </div>
             <span className="font-bold text-2xl tracking-tight text-slate-800">
               Medeli<span className="text-primary-600">RDV</span>
