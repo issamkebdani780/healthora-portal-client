@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Phone, ArrowRight, ShieldCheck, KeyRound } from 'lucide-react';
 import { authService } from '../services/authService';
@@ -11,6 +11,13 @@ const Login = () => {
   const [userExists, setUserExists] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (localStorage.getItem('token')) {
+      navigate('/dashboard');
+    }
+  }, [navigate]);
 
   const handlePhoneSubmit = async (e) => {
     e.preventDefault();
@@ -37,7 +44,7 @@ const Login = () => {
       if (userExists === true || userExists === undefined) {
         // Assume user exists or we don't know, try verifying
         await authService.verifyOtp(phone, otp);
-        navigate('/'); // Go to home after login
+        navigate('/dashboard'); // Go directly to dashboard after login
       } else {
         // User does not exist, navigate to signup
         navigate('/register', { state: { phone } });

@@ -17,6 +17,13 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (localStorage.getItem('token')) {
+      navigate('/dashboard');
+    }
+  }, [navigate]);
+
   // Pre-fill phone if coming from Login flow
   useEffect(() => {
     if (location.state?.phone) {
@@ -35,7 +42,7 @@ const Register = () => {
     try {
       // The API might expect specific format, but we'll send what we have
       await authService.signup(formData);
-      navigate('/'); // Go to home after registration
+      navigate('/dashboard'); // Go directly to dashboard after registration
     } catch (err) {
       setError(err.message || 'Registration failed.');
     } finally {
