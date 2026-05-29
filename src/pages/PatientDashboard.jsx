@@ -923,64 +923,85 @@ const PatientDashboard = () => {
                       <p className="text-slate-400 text-xs max-w-sm leading-relaxed">Lorsque votre médecin traitant émet une ordonnance, elle s'affichera instantanément ici en toute sécurité.</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                      {prescriptions.map((rx) => (
-                        <div key={rx.id} className="bg-white border border-slate-100/80 rounded-3xl p-6 shadow-sm hover-lift relative overflow-hidden flex flex-col justify-between">
-                          
-                          <div>
-                            <div className="flex justify-between items-start gap-3 pb-3.5 border-b border-slate-100 mb-4">
-                              <div>
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-primary-50 text-primary-600 text-[9px] font-extrabold uppercase tracking-wider mb-1.5 border border-primary-100/50">
-                                  Document Officiel
-                                </span>
-                                <h3 className="font-extrabold text-slate-900 text-base">Dr. {rx.doctor_firstname} {rx.doctor_lastname}</h3>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">{rx.speciality_name || 'Médecin Traitant'}</p>
-                              </div>
-
-                              {rx.file_url && (
-                                <a 
-                                  href={rx.file_url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 py-2 px-3.5 bg-gradient-to-r from-primary-500 to-secondary-600 hover:from-primary-600 hover:to-secondary-700 text-white rounded-xl text-xs font-bold shadow-md shadow-primary-500/20 transition-all duration-200 hover:scale-[1.02] active:scale-95 shrink-0 cursor-pointer"
-                                >
-                                  <Download className="w-3.5 h-3.5" />
-                                  PDF
-                                </a>
-                              )}
-                            </div>
-
-                            {/* Prescribed Drugs details */}
-                            {rx.medicaments && rx.medicaments.length > 0 ? (
-                              <div className="space-y-3">
-                                <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Médicaments prescrits</p>
-                                <div className="space-y-2">
-                                  {rx.medicaments.map((med, index) => (
-                                    <div key={index} className="p-3.5 bg-slate-50/60 rounded-2xl border border-slate-100/55 flex justify-between items-center gap-3 hover:bg-slate-50 transition-colors">
-                                      <div>
-                                        <h4 className="font-bold text-slate-800 text-xs">{med.name}</h4>
-                                        <p className="text-[10px] text-slate-400 font-bold mt-0.5">
-                                          Freq: {med.frequency} • Dur: {med.duration}
-                                        </p>
-                                      </div>
-                                      <span className="text-[10px] font-bold px-2.5 py-1 bg-white border border-slate-100 text-slate-600 rounded-xl shadow-sm shrink-0">
-                                        Dosage: {med.dosage}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-xs text-slate-400 italic">Aucune information détaillée de médicament.</p>
-                            )}
-                          </div>
-
-                          <div className="mt-5 pt-3.5 border-t border-slate-50 flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase tracking-wide">
-                            <span>Dossier #MED-RX-{rx.id}</span>
-                            <span className="text-slate-500 font-extrabold">Émis le : {new Date(rx.created_at).toLocaleDateString("fr-FR", { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                          </div>
+                    <div className="bg-white border border-slate-100/80 rounded-3xl shadow-sm overflow-hidden">
+                      {/* List Header */}
+                      <div className="px-6 py-4 border-b border-slate-100/80 bg-slate-50/40">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">Mes Ordonnances</h3>
+                          <span className="text-[10px] font-extrabold text-slate-400 bg-white border border-slate-100 px-3 py-1 rounded-lg">{prescriptions.length} document{prescriptions.length > 1 ? 's' : ''}</span>
                         </div>
-                      ))}
+                      </div>
+
+                      {/* List Items */}
+                      <div className="divide-y divide-slate-50">
+                        {prescriptions.map((rx, index) => (
+                          <div 
+                            key={rx.id} 
+                            className="group px-6 py-5 hover:bg-slate-50/40 transition-all duration-200 "
+                            style={{ animationDelay: `${index * 50}ms` }}
+                          >
+                            <div className="flex items-center gap-5">
+                              
+                              {/* Prescription Icon */}
+                              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-50 to-secondary-50 border border-primary-100/50 text-primary-600 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform duration-200">
+                                <FileText className="w-5.5 h-5.5" />
+                              </div>
+
+                              {/* Main Info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h4 className="font-extrabold text-slate-900 text-sm truncate">Dr. {rx.doctor_firstname} {rx.doctor_lastname}</h4>
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary-50 text-primary-600 text-[8px] font-extrabold uppercase tracking-wider border border-primary-100/50 shrink-0">
+                                    Ordonnance
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">{rx.speciality_name || 'Médecin Traitant'}</p>
+                                
+                                {/* Medications inline summary */}
+                                {rx.medicaments && rx.medicaments.length > 0 && (
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                                    {rx.medicaments.slice(0, 4).map((med, i) => (
+                                      <span key={i} className="inline-flex items-center px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-bold text-slate-600 group-hover:bg-white group-hover:border-slate-200 transition-colors">
+                                        {med.name}
+                                        {med.dosage && <span className="ml-1 text-slate-400">({med.dosage})</span>}
+                                      </span>
+                                    ))}
+                                    {rx.medicaments.length > 4 && (
+                                      <span className="text-[10px] font-extrabold text-primary-500">+{rx.medicaments.length - 4} autres</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Right side: Date + Actions */}
+                              <div className="flex items-center gap-4 shrink-0">
+                                {/* Date */}
+                                <div className="text-right hidden sm:block">
+                                  <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Émis le</p>
+                                  <p className="text-xs font-bold text-slate-700 mt-0.5">{new Date(rx.created_at).toLocaleDateString("fr-FR", { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                                  
+                                </div>
+
+                                {/* Download Button */}
+                                {rx.file_url && (
+                                  <a 
+                                    href={rx.file_url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-r from-primary-500 to-secondary-600 hover:from-primary-600 hover:to-secondary-700 text-white shadow-md shadow-primary-500/20 transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer"
+                                    title="Télécharger le PDF"
+                                  >
+                                    <Download className="w-4 h-4" />
+                                  </a>
+                                )}
+
+                                
+                                
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
